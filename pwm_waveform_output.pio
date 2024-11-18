@@ -1,0 +1,47 @@
+; pwm_waveform_output.pio
+
+.program pwm_waveform_output
+
+.wrap_target
+    pull block         ; Pull high_time from TX FIFO
+    mov y, osr         ; Move high_time to Y
+    pull block         ; Pull low_time from TX FIFO
+    mov x, osr         ; Move low_time to X
+
+    set pins, 1        ; Set pin high
+high_loop:
+    jmp y--, high_loop ; Wait for high_time cycles
+
+    set pins, 0        ; Set pin low
+low_loop:
+    jmp x--, low_loop  ; Wait for low_time cycles
+.wrap
+
+
+
+% c-sdk {
+# define a state machine program that outputs the PWM waveform
+void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    pio_sm_config c = pwm_waveform_output_program_get_default_config(offset);
+    pio_gpio_init(pio, pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+    // Map the state machine's SET pins to GPIO pin
+    sm_config_set_set_pins(&c, pin, 1);
+
+    sm_config_set_out_pins(&c, pin, 1);
+
+    // Configure FIFO to autopull and use full 32-bit pulls
+    sm_config_set_in_shift(&c, false, false, 32);
+    sm_config_set_out_shift(&c, false, false, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    # Think about this u may want to change this to get the desired frequency
+    sm_config_set_clkdiv(&c, 1.0f); 
+
+    pio_sm_init(pio, sm, offset, &c);
+
+    // Enable the state machine
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
