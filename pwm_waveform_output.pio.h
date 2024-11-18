@@ -46,7 +46,6 @@ static inline pio_sm_config pwm_waveform_output_program_get_default_config(uint 
     return c;
 }
 
-# define a state machine program that outputs the PWM waveform
 void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
     pio_sm_config c = pwm_waveform_output_program_get_default_config(offset);
     pio_gpio_init(pio, pin);
@@ -58,7 +57,7 @@ void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
     sm_config_set_in_shift(&c, false, false, 32);
     sm_config_set_out_shift(&c, false, false, 32);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-    # Think about this u may want to change this to get the desired frequency
+    // Think about this u may want to change this to get the desired frequency
     sm_config_set_clkdiv(&c, 1.0f); 
     pio_sm_init(pio, sm, offset, &c);
     // Enable the state machine
