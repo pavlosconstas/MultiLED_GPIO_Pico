@@ -46,24 +46,20 @@ static inline pio_sm_config pwm_waveform_output_program_get_default_config(uint 
     return c;
 }
 
+# define a state machine program that outputs the PWM waveform
 void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
-    // Get the default state machine configuration for our program
     pio_sm_config c = pwm_waveform_output_program_get_default_config(offset);
-    // Initialize the specified GPIO pin for the PIO to control
     pio_gpio_init(pio, pin);
-    // Set the pin direction to output for the PIO
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-    // Map the state machine's SET pins to our GPIO pin
+    // Map the state machine's SET pins to GPIO pin
     sm_config_set_set_pins(&c, pin, 1);
-    // Ensure that the SET instruction only controls the specified GPIO pin
     sm_config_set_out_pins(&c, pin, 1);
     // Configure FIFO to autopull and use full 32-bit pulls
-    sm_config_set_in_shift(&c, false, false, 32);  // No shifting in
-    sm_config_set_out_shift(&c, false, false, 32); // No shifting out
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX); // Use TX FIFO only
-    // Set the clock divider to 1 for maximum speed (can be adjusted if needed)
-    sm_config_set_clkdiv(&c, 1.0f);
-    // Initialize the state machine with our configuration
+    sm_config_set_in_shift(&c, false, false, 32);
+    sm_config_set_out_shift(&c, false, false, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    # Think about this u may want to change this to get the desired frequency
+    sm_config_set_clkdiv(&c, 1.0f); 
     pio_sm_init(pio, sm, offset, &c);
     // Enable the state machine
     pio_sm_set_enabled(pio, sm, true);
