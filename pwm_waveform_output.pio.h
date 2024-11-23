@@ -13,26 +13,23 @@
 // ------------------- //
 
 #define pwm_waveform_output_wrap_target 0
-#define pwm_waveform_output_wrap 7
+#define pwm_waveform_output_wrap 4
 #define pwm_waveform_output_pio_version 0
 
 static const uint16_t pwm_waveform_output_program_instructions[] = {
             //     .wrap_target
     0x80a0, //  0: pull   block                      
-    0xa047, //  1: mov    y, osr                     
+    0x6020, //  1: out    x, 32                      
     0x80a0, //  2: pull   block                      
-    0xa027, //  3: mov    x, osr                     
-    0xe001, //  4: set    pins, 1                    
-    0x0085, //  5: jmp    y--, 5                     
-    0xe000, //  6: set    pins, 0                    
-    0x0047, //  7: jmp    x--, 7                     
+    0x6001, //  3: out    pins, 1                    
+    0x0044, //  4: jmp    x--, 4                     
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program pwm_waveform_output_program = {
     .instructions = pwm_waveform_output_program_instructions,
-    .length = 8,
+    .length = 5,
     .origin = -1,
     .pio_version = 0,
 #if PICO_PIO_VERSION > 0
@@ -45,24 +42,5 @@ static inline pio_sm_config pwm_waveform_output_program_get_default_config(uint 
     sm_config_set_wrap(&c, offset + pwm_waveform_output_wrap_target, offset + pwm_waveform_output_wrap);
     return c;
 }
-
-void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
-    pio_sm_config c = pwm_waveform_output_program_get_default_config(offset);
-    pio_gpio_init(pio, pin);
-    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-    // Map the state machine's SET pins to GPIO pin
-    sm_config_set_set_pins(&c, pin, 1);
-    sm_config_set_out_pins(&c, pin, 1);
-    // Configure FIFO to autopull and use full 32-bit pulls
-    sm_config_set_in_shift(&c, false, false, 32);
-    sm_config_set_out_shift(&c, false, false, 32);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-    // Think about this u may want to change this to get the desired frequency
-    sm_config_set_clkdiv(&c, 1.0f); 
-    pio_sm_init(pio, sm, offset, &c);
-    // Enable the state machine
-    pio_sm_set_enabled(pio, sm, true);
-}
-
 #endif
 
