@@ -8,7 +8,7 @@
 #include "hardware/clocks.h"
 #include "pwm_waveform_output.pio.h"
 
-#define MAX_CHANNELS 2
+#define MAX_CHANNELS 3 
 
 typedef struct {
     uint gpio_pin;
@@ -18,16 +18,24 @@ typedef struct {
 } ChannelConfig;
 
 ChannelConfig channels[MAX_CHANNELS] = {
-    { .gpio_pin = 27 }, // LED1
-    { .gpio_pin = 16 }  // LED2
+    { .gpio_pin = 27 }, 
+    { .gpio_pin = 16 }, 
+    { .gpio_pin = 15 }, 
 };
 
 uint32_t desired_frequencies[MAX_CHANNELS] = {
-    200000, // Not sure how high this can go. I think 200kHz is about the max.
-    200000 
+    80, 
+    80, 
+    80  
 };
 
-void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, bool is_led2) {
+float start_offsets[MAX_CHANNELS] = {
+    0.0f,     
+    33.3f,    
+    66.6f     
+};
+
+void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, float start_offset_percent) {
     uint32_t cycles_per_period = system_clock / desired_frequency;
     uint32_t overhead_cycles_per_step = 4; 
     uint32_t total_overhead_cycles = 4 * overhead_cycles_per_step;
@@ -39,52 +47,38 @@ void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_
 
     uint32_t total_duration_cycles = cycles_per_period - total_overhead_cycles;
 
-    uint8_t state_percentages[] = {40, 10, 40, 10}; 
-    uint32_t durations[4];
+    float on_time_percent = 20.0f;
+    float off_time_percent = 80.0f;
 
-    for (int i = 0; i < 4; i++) {
-        durations[i] = (total_duration_cycles * state_percentages[i]) / 100;
-        if (durations[i] == 0) durations[i] = 1;
-    }
+    uint32_t on_duration = (uint32_t)((total_duration_cycles * on_time_percent) / 100.0f);
+    uint32_t off_duration = (uint32_t)((total_duration_cycles * off_time_percent) / 100.0f);
 
-    uint32_t sum_durations = durations[0] + durations[1] + durations[2] + durations[3];
-    if (sum_durations < total_duration_cycles) {
-        durations[3] += (total_duration_cycles - sum_durations);
-    } else if (sum_durations > total_duration_cycles) {
-        durations[3] -= (sum_durations - total_duration_cycles);
-    }
+    if (on_duration == 0) on_duration = 1;
+    if (off_duration == 0) off_duration = 1;
 
-    channel->waveform_length = 8; // 4 steps * 2 (duration + state)
+    uint32_t start_offset_cycles = (uint32_t)((cycles_per_period * start_offset_percent) / 100.0f);
+    if (start_offset_cycles == 0 && start_offset_percent > 0.0f) start_offset_cycles = 1;
+
+    channel->waveform_length = 6;
     channel->waveform_data = (uint32_t *)malloc(channel->waveform_length * sizeof(uint32_t));
     if (!channel->waveform_data) {
         printf("Failed to allocate memory for channel %d\n", channel->gpio_pin);
         return;
     }
 
-    if (is_led2) {
-        channel->waveform_data[0] = durations[0]; // OFF
-        channel->waveform_data[1] = 0;          // OFF
-        channel->waveform_data[2] = durations[1]; // OFF
-        channel->waveform_data[3] = 0;          // OFF
-        channel->waveform_data[4] = durations[2]; // ON
-        channel->waveform_data[5] = 1;          // ON
-        channel->waveform_data[6] = durations[3]; // OFF
-        channel->waveform_data[7] = 0;          // OFF
-    } else {
-        channel->waveform_data[0] = durations[0]; // ON
-        channel->waveform_data[1] = 1;          // ON
-        channel->waveform_data[2] = durations[1]; // OFF
-        channel->waveform_data[3] = 0;          // OFF
-        channel->waveform_data[4] = durations[2]; // OFF
-        channel->waveform_data[5] = 0;          // OFF
-        channel->waveform_data[6] = durations[3]; // OFF
-        channel->waveform_data[7] = 0;          // OFF
-    }
 
-    // printf("Channel %d Waveform:\n", channel->gpio_pin);
-    // for (int i = 0; i < 4; i++) {
-    //     printf("  Step %d: Duration %u cycles, Pin State %u\n", i + 1, channel->waveform_data[i * 2], channel->waveform_data[i * 2 + 1]);
-    // }
+    channel->waveform_data[0] = start_offset_cycles; 
+    channel->waveform_data[1] = 0;                   
+
+    channel->waveform_data[2] = on_duration;         
+    channel->waveform_data[3] = 1;                   
+
+    uint32_t remaining_cycles = cycles_per_period - (start_offset_cycles + on_duration + total_overhead_cycles);
+    if (remaining_cycles == 0) remaining_cycles = 1;
+
+    channel->waveform_data[4] = remaining_cycles;    
+    channel->waveform_data[5] = 0;                   
+
 }
 
 void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
@@ -117,15 +111,14 @@ void configure_dma_for_channel(PIO pio, uint sm, ChannelConfig *channel) {
     dma_channel_configure(
         dma_chan,
         &c,
-        &pio->txf[sm],            
-        channel->waveform_data,
-        channel->waveform_length,
+        &pio->txf[sm],
+        channel->waveform_data,   
+        channel->waveform_length, 
         false
     );
 
     dma_channel_set_irq0_enabled(dma_chan, true);
 }
-
 
 void dma_handler() {
     uint32_t dma_intr = dma_hw->ints0;
@@ -143,16 +136,14 @@ int main() {
     stdio_init_all();
     set_sys_clock_khz(250000, true);
     uint32_t system_clock = clock_get_hz(clk_sys);
-    // printf("System clock: %u Hz\n", system_clock);
 
     PIO pio = pio0;
     uint offset = pio_add_program(pio, &pwm_waveform_output_program);
 
     for (int i = 0; i < MAX_CHANNELS; i++) {
         uint sm = i; 
-        bool is_led2 = (i % 2 == 1);
 
-        generate_synchronized_pwm_waveform(&channels[i], system_clock, desired_frequencies[i], is_led2);
+        generate_synchronized_pwm_waveform(&channels[i], system_clock, desired_frequencies[i], start_offsets[i]);
         pwm_waveform_output_program_init(pio, sm, offset, channels[i].gpio_pin);
         configure_dma_for_channel(pio, sm, &channels[i]);
     }
