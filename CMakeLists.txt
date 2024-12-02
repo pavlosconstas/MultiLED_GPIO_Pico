@@ -35,18 +35,22 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(mult_led mult_led.c )
+add_executable(mult_led mult_led.c)
 
 pico_set_program_name(mult_led "mult_led")
 pico_set_program_version(mult_led "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(mult_led 1)
-pico_enable_stdio_usb(mult_led 0)
+
+# turns out I had this at 0... :( 
+pico_enable_stdio_usb(mult_led 1)
 
 # Add the standard library to the build
 target_link_libraries(mult_led
         pico_stdlib)
+
+pico_generate_pio_header(mult_led ${CMAKE_CURRENT_LIST_DIR}/pwm_waveform_output.pio)
 
 # Add the standard include files to the build
 target_include_directories(mult_led PRIVATE

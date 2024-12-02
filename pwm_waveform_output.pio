@@ -3,21 +3,19 @@
 .program pwm_waveform_output
 
 .wrap_target
-    pull block         ; Pull high_time from TX FIFO
-    mov y, osr         ; Move high_time to Y
-    pull block         ; Pull low_time from TX FIFO
-    mov x, osr         ; Move low_time to X
+    pull block         ; Pull high_time from TX FIFO -- 1
+    mov y, osr         ; Move high_time to Y -- 2
+    pull block         ; Pull low_time from TX FIFO -- 3
+    mov x, osr         ; Move low_time to X -- 4
 
-    set pins, 1        ; Set pin high
+    set pins, 1        ; Set pin high -- 5
 high_loop:
-    jmp y--, high_loop ; Wait for high_time cycles
+    jmp y--, high_loop ; Wait for high_time cycles -- 6
 
-    set pins, 0        ; Set pin low
+    set pins, 0        ; Set pin low -- 7
 low_loop:
-    jmp x--, low_loop  ; Wait for low_time cycles
+    jmp x--, low_loop  ; Wait for low_time cycles -- 8
 .wrap
-
-
 
 % c-sdk {
 void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
@@ -35,7 +33,7 @@ void pwm_waveform_output_program_init(PIO pio, uint sm, uint offset, uint pin) {
     sm_config_set_out_shift(&c, false, false, 32);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
-    // Think about this u may want to change this to get the desired frequency
+    // Think about this u may want to change this to get the desired frequency NEVERMIND
     sm_config_set_clkdiv(&c, 1.0f); 
 
     pio_sm_init(pio, sm, offset, &c);
