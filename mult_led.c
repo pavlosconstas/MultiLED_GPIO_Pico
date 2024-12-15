@@ -44,9 +44,9 @@ ChannelConfig channels[MAX_CHANNELS] = {
     {.gpio_pin = 15}};
 
 uint32_t desired_frequencies[MAX_CHANNELS] = {
-    19980,
+    19950,
     20000,
-    20020};
+    20050};
 
 // feat.... double!!! I think is overkill but it's fine
 void generate_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency)
