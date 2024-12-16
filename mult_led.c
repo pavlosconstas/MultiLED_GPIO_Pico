@@ -34,15 +34,15 @@ uint32_t desired_frequencies[MAX_CHANNELS] = {
 
 float start_offsets[MAX_CHANNELS] = {
     0.0f,     
-    33.3f,    
-    66.6f,
-    16.6f
+    33.333f,    
+    66.667f,
+    16.667f
 };
 
 void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, float start_offset_percent) {
     uint32_t cycles_per_period = system_clock / desired_frequency;
-    uint32_t overhead_cycles_per_step = 8; 
-    uint32_t total_overhead_cycles = 8 * overhead_cycles_per_step;
+    uint32_t overhead_cycles_per_step = 4; 
+    uint32_t total_overhead_cycles = 4 * overhead_cycles_per_step;
 
     if (cycles_per_period <= total_overhead_cycles) {
         printf("Total cycles per period is too small for channel %d.\n", channel->gpio_pin);
