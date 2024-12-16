@@ -40,7 +40,7 @@ float start_offsets[MAX_CHANNELS] = {
 };
 
 void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, float start_offset_percent) {
-    uint32_t cycles_per_period = (uint32_t)((double)system_clock / (double)desired_frequency + 0.5);
+    uint32_t cycles_per_period = system_clock / desired_frequency;
     uint32_t overhead_cycles_per_step = 8; 
     uint32_t total_overhead_cycles = 8 * overhead_cycles_per_step;
 
