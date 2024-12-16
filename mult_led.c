@@ -8,37 +8,41 @@
 #include "hardware/clocks.h"
 #include "pwm_waveform_output.pio.h"
 
-#define MAX_CHANNELS 3 
+#define MAX_CHANNELS 4
 
 typedef struct {
     uint gpio_pin;
     uint32_t waveform_length;
     uint32_t *waveform_data;
     uint dma_chan;
+    float on_time_percent; 
+    float off_time_percent;
 } ChannelConfig;
-
 ChannelConfig channels[MAX_CHANNELS] = {
-    { .gpio_pin = 27 }, 
-    { .gpio_pin = 16 }, 
-    { .gpio_pin = 15 }, 
+    { .gpio_pin = 27, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
+    { .gpio_pin = 16, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
+    { .gpio_pin = 15, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
+    { .gpio_pin = 14, .on_time_percent = 50.0f, .off_time_percent = 50.0f }
 };
 
 uint32_t desired_frequencies[MAX_CHANNELS] = {
-    80, 
-    80, 
-    80  
+    20000, 
+    20000, 
+    20000,
+    60000 // This is the sync
 };
 
 float start_offsets[MAX_CHANNELS] = {
     0.0f,     
     33.3f,    
-    66.6f     
+    66.6f,
+    16.6f
 };
 
 void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, float start_offset_percent) {
-    uint32_t cycles_per_period = system_clock / desired_frequency;
-    uint32_t overhead_cycles_per_step = 4; 
-    uint32_t total_overhead_cycles = 4 * overhead_cycles_per_step;
+    uint32_t cycles_per_period = (uint32_t)((double)system_clock / (double)desired_frequency + 0.5);
+    uint32_t overhead_cycles_per_step = 8; 
+    uint32_t total_overhead_cycles = 8 * overhead_cycles_per_step;
 
     if (cycles_per_period <= total_overhead_cycles) {
         printf("Total cycles per period is too small for channel %d.\n", channel->gpio_pin);
@@ -47,8 +51,8 @@ void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_
 
     uint32_t total_duration_cycles = cycles_per_period - total_overhead_cycles;
 
-    float on_time_percent = 20.0f;
-    float off_time_percent = 80.0f;
+    float on_time_percent = channel->on_time_percent;
+    float off_time_percent = channel->off_time_percent;
 
     uint32_t on_duration = (uint32_t)((total_duration_cycles * on_time_percent) / 100.0f);
     uint32_t off_duration = (uint32_t)((total_duration_cycles * off_time_percent) / 100.0f);
