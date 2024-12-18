@@ -22,7 +22,7 @@ ChannelConfig channels[MAX_CHANNELS] = {
     { .gpio_pin = 27, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
     { .gpio_pin = 16, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
     { .gpio_pin = 15, .on_time_percent = 20.0f, .off_time_percent = 80.0f }, 
-    { .gpio_pin = 14, .on_time_percent = 50.0f, .off_time_percent = 50.0f }
+    { .gpio_pin = 13, .on_time_percent = 50.0f, .off_time_percent = 50.0f }
 };
 
 uint32_t desired_frequencies[MAX_CHANNELS] = {
@@ -34,9 +34,9 @@ uint32_t desired_frequencies[MAX_CHANNELS] = {
 
 float start_offsets[MAX_CHANNELS] = {
     0.0f,     
-    33.333f,    
-    66.667f,
-    16.667f
+    33.333333f,    
+    66.666667f,
+    10.0f
 };
 
 void generate_synchronized_pwm_waveform(ChannelConfig *channel, uint32_t system_clock, uint32_t desired_frequency, float start_offset_percent) {
